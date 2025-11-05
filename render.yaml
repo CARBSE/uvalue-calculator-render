@@ -12,14 +12,3 @@ services:
       - key: CORS_ORIGINS
         value: "*"
     healthCheckPath: /api/cities
-
-  - type: static
-    name: uvalue-web
-    rootDir: web
-    buildCommand: npm ci && npm run build
-    publishPath: dist
-    autoDeploy: true
-    envVars:
-      - key: VITE_API_BASE
-        # update this after the backend goes live
-        value: https://uvalue-api.onrender.com/api
