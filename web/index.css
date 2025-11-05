@@ -1,0 +1,9 @@
+﻿/* web/src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* optional app tweaks */
+html, body, #root { height: 100%; }
+body { background: #f6f7fb; }
+

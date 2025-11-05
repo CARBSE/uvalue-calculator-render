@@ -1,0 +1,14 @@
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  button, #root > div > div > div:nth-child(2) > div:nth-child(1) {
+    display: none !important;
+  }
+  #capture-area, #capture-area > div {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}

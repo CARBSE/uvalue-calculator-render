@@ -1,0 +1,239 @@
+import React, { useEffect, useMemo, useState } from "react";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+
+import LayerRow from "./components/LayerRow";
+import ResultsTable from './components/ResultsTable';
+import CoefficientsTable from './components/CoefficientsTable';
+import SummaryTable from './components/SummaryTable';
+import GraphicPanel from './components/GraphicPanel';
+
+import { getMaterials, getCities, getFilms, postCalculate } from "./lib/api";
+
+const INITIAL_ASSEMBLY = "wall";
+
+const getInitialState = () => {
+  const savedStateJSON = localStorage.getItem('uvalue-calculator-state');
+  if (savedStateJSON) {
+    try {
+      return JSON.parse(savedStateJSON);
+    } catch (e) {
+      console.error("Failed to parse saved state, using defaults.", e);
+    }
+  }
+  return {
+    layers: [],
+    city: "",
+    assembly: INITIAL_ASSEMBLY,
+  };
+};
+
+export default function App() {
+  const [materials, setMaterials] = useState([]);
+  const [cities, setCities] = useState([]);
+  const initialState = getInitialState();
+  const [city, setCity] = useState(initialState.city);
+  const [assembly, setAssembly] = useState(initialState.assembly);
+  const [layers, setLayers] = useState(initialState.layers);
+  const [result, setResult] = useState(null);
+  const [films, setFilms] = useState({ Hi: 0, Ho: 0 });
+  const [validationErrors, setValidationErrors] = useState([]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    getMaterials().then(setMaterials).catch(console.error);
+    getCities().then(({ cities }) => setCities(cities)).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (!city) { setFilms({ Hi: 0, Ho: 0 }); return; }
+    getFilms(city, assembly).then(setFilms).catch(() => setFilms({ Hi: 0, Ho: 0 }));
+  }, [city, assembly]);
+
+  useEffect(() => {
+    const stateToSave = { layers, city, assembly };
+    localStorage.setItem('uvalue-calculator-state', JSON.stringify(stateToSave));
+  }, [layers, city, assembly]);
+
+  useEffect(() => {
+    const errors = [];
+    if (!city) errors.push("Please select a city.");
+    if (layers.length === 0) errors.push("Please add at least one layer.");
+    layers.forEach((layer, index) => {
+      if (!layer.material) errors.push(`Layer #${index + 1} is missing a material.`);
+      if (!(Number(layer.thickness_mm) > 0)) errors.push(`Layer #${index + 1} must have a thickness greater than 0.`);
+    });
+    setValidationErrors(errors);
+  }, [city, layers]);
+
+  useEffect(() => {
+    setResult(null);
+  }, [layers, city, assembly]);
+
+  function addLayer() {
+    const id = (crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
+    setLayers(prev => [...prev, { id, material: "", thickness_mm: 10 }]);
+  }
+  function removeLayer(id) {
+    setLayers(prev => prev.filter(l => l.id !== id));
+  }
+
+  const matsByName = useMemo(() => {
+    const map = new Map(); materials.forEach(m => map.set(m.name, m)); return map;
+  }, [materials]);
+
+  const SCALE = 2;
+  const graphicLayers = useMemo(() => layers.map(l => ({
+    id: l.id,
+    width: Math.max(1, (Number(l.thickness_mm) || 0) * SCALE),
+    img: (matsByName.get(l.material)?.graphicImage || null),
+    materialName: l.material,
+    thickness: l.thickness_mm
+  })), [layers, matsByName]);
+
+  const assemblyMetrics = useMemo(() => {
+    const totalThicknessMM = layers.reduce((sum, l) => sum + (Number(l.thickness_mm) || 0), 0);
+    const totalGraphicWidthPX = totalThicknessMM * SCALE;
+    return { totalThicknessMM, totalGraphicWidthPX };
+  }, [layers]);
+
+  const canCalculate = useMemo(() =>
+    !!city && layers.length > 0 &&
+    layers.every(l => l.material && Number(l.thickness_mm) > 0),
+  [city, layers]);
+
+  async function onCalculate() {
+    if (!canCalculate) return;
+    const payload = {
+      city, assembly,
+      dynamic_coefficients: true,
+      override_Rsi: null, override_Rse: null,
+      layers: layers.map(l => ({ material: l.material, thickness_mm: Number(l.thickness_mm)||0 })),
+    };
+    try { 
+      const apiResult = await postCalculate(payload);
+      setResult(apiResult);
+    }
+    catch (e) { alert(e.message); }
+  }
+
+  const handleSavePDF = () => {
+    const resultsElement = document.getElementById('results-section');
+    if (!resultsElement) {
+      console.error("Results element not found!");
+      return;
+    }
+    setIsSaving(true);
+
+    html2canvas(resultsElement, { scale: 2 })
+      .then((canvas) => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+        
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        
+        pdf.addImage(imgData, 'PNG', 10, 10, pdfWidth - 20, pdfHeight > 277 ? 277 : pdfHeight);
+        pdf.save('u-value-calculation.pdf');
+      })
+      .finally(() => {
+        setIsSaving(false);
+      });
+  };
+
+  return (
+    <div className="p-4 max-w-6xl mx-auto">
+      <div className="grid grid-cols-12 gap-4">
+        
+        <GraphicPanel 
+          graphicLayers={graphicLayers} 
+          totalGraphicWidthPX={assemblyMetrics.totalGraphicWidthPX}
+          totalThicknessMM={assemblyMetrics.totalThicknessMM}
+        />
+
+        <div className="col-span-9">
+          <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-gray-100 rounded-lg mb-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium">City</label>
+              <select className="border rounded px-2 py-1" value={city} onChange={(e)=>setCity(e.target.value)}>
+                <option value="">-- Select City --</option>
+                {cities.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium">Assembly Type:</span>
+              {["wall", "roof_up"].map(a => (
+                <label key={a} className="flex items-center gap-1 text-sm capitalize">
+                  <input type="radio" name="asm" value={a} checked={assembly===a} onChange={()=>setAssembly(a)} />
+                  {a.replace("_up", "")}
+                </label>
+              ))}
+            </div>
+
+            <button className="px-4 py-1 bg-white border rounded shadow-sm hover:bg-gray-50" onClick={addLayer}>Add Layer</button>
+          </div>
+          
+          <div className="mb-2 text-sm">Selected No. of Layers: {layers.length}</div>
+
+          <div className="space-y-1 mb-3">
+            {layers.map((l, i) => (
+              <LayerRow
+                key={l.id}
+                layer={l}
+                materials={materials}
+                isFirst={i===0}
+                isLast={i===layers.length-1}
+                onChange={(next)=> setLayers(prev => prev.map(x => x.id===l.id ? next : x))}
+                onRemove={()=> removeLayer(l.id)}
+              />
+            ))}
+          </div>
+
+          {!canCalculate && validationErrors.length > 0 && (
+            <div className="p-3 mb-4 text-sm text-red-800 bg-red-100 rounded-lg" role="alert">
+              <span className="font-medium">Please fix the following issues:</span>
+              <ul className="mt-1.5 list-disc list-inside">
+                {validationErrors.map((err, i) => (
+                  <li key={i}>{err}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="flex gap-4 mb-4">
+            <button
+              className={`px-4 py-2 rounded ${canCalculate ? "bg-blue-600 text-white" : "bg-gray-300 text-gray-600 cursor-not-allowed"}`}
+              onClick={onCalculate}
+              disabled={!canCalculate}
+            >
+              Calculate
+            </button>
+
+            <button
+              onClick={handleSavePDF}
+              disabled={!result || isSaving}
+              className={`px-4 py-2 rounded ${!result || isSaving ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-green-600 text-white"}`}
+            >
+              {isSaving ? 'Saving...' : 'Save Results as PDF'}
+            </button>
+          </div>
+
+          <div id="results-section">
+            {result && (
+              <div className="space-y-6 mt-4 border-t pt-4">
+                <ResultsTable layers={result.layers} matsByName={matsByName} />
+                <CoefficientsTable result={result} />
+                <SummaryTable result={result} layerCount={layers.length} />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
