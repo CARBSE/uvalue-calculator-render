@@ -2,13 +2,42 @@
   body {
     margin: 0;
     padding: 0;
+    -webkit-print-color-adjust: exact; /* ensures colors show correctly */
+    print-color-adjust: exact;
   }
-  button, #root > div > div > div:nth-child(2) > div:nth-child(1) {
+
+  /* Hide buttons and interactive elements */
+  button,
+  #root > div > div > div:nth-child(2) > div:nth-child(1),
+  .no-print {
     display: none !important;
   }
-  #capture-area, #capture-area > div {
+
+  /* Show elements marked for print (e.g. the print-only header) */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Ensure capture area uses full width */
+  #capture-area,
+  #capture-area > div {
     display: block !important;
     width: 100% !important;
     max-width: 100% !important;
+  }
+
+  /* Prevent tables and headers from splitting across pages */
+  table {
+    page-break-inside: avoid;
+    border-collapse: collapse;
+  }
+
+  h2, h3 {
+    margin-top: 0;
+  }
+
+  /* Optional: add small margins for readability */
+  @page {
+    margin: 15mm;
   }
 }

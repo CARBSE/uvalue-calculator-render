@@ -378,6 +378,16 @@ export default function App() {
             </button>
           </div>
 
+          {/* Print header (visible only in PDF) */}
+          {(result || layers.length > 0) && (
+            <div className="print-only mb-3 border-b pb-2">
+              <h2 className="text-lg font-semibold">U-Value Report</h2>
+              <div>City: {result?.dynamic?.city || city || "—"}</div>
+              <div>Assembly: {(result?.dynamic?.assembly || assembly || "—").replace("_up", "")}</div>
+              <div>Layers: {layers.length}</div>
+            </div>
+          )}
+
           <div id="results-section">
             {result && result.static && result.dynamic && (
               <div className="space-y-6 mt-4 border-t pt-4">
