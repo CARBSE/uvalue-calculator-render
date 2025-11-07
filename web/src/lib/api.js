@@ -155,3 +155,12 @@ export function descriptionImageUrl(filename) {
 export function graphicImageUrl(filename) {
   return `${BACKEND_BASE}/static/materials/graphic/${filename}`;
 }
+
+export function descriptionImageUrl(filename) {
+  if (!filename) return "";
+  return `${BACKEND_BASE}/static/materials/description/${encodeURIComponent(filename)}?v=1`;
+}
+export function graphicImageUrl(filename) {
+  if (!filename) return "";
+  return `${BACKEND_BASE}/static/materials/graphic/${encodeURIComponent(filename)}?v=1`;
+}
