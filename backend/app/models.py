@@ -34,3 +34,22 @@ class SingleCalcResponse(BaseModel):
 class DualCalcResponse(BaseModel):
     static: SingleCalcResponse
     dynamic: SingleCalcResponse
+    
+class SaveDesignRequest(BaseModel):
+    title: Optional[str] = None
+    city: str
+    assembly: str
+    layers: List[dict]     # [{material, thickness_mm, ...}] - your input layers
+    result: dict           # full API result you already get from /calculate
+
+class SaveDesignResponse(BaseModel):
+    public_id: str
+    url: str
+
+class LoadDesignResponse(BaseModel):
+    title: Optional[str]
+    city: str
+    assembly: str
+    layers: List[dict]
+    result: dict
+    created_at: str
