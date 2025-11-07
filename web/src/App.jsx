@@ -7,7 +7,15 @@ import CoefficientsTable from "./components/CoefficientsTable";
 import SummaryTable from "./components/SummaryTable";
 import GraphicPanel from "./components/GraphicPanel";
 
-import { getMaterials, getCities, getFilms, postCalculate, waitForHealth } from "./lib/api";
+import {
+  getMaterials,
+  getCities,
+  getFilms,
+  postCalculate,
+  waitForHealth,
+  saveDesign,
+  loadDesign,
+} from "./lib/api";
 
 const INITIAL_ASSEMBLY = "wall";
 
@@ -141,6 +149,7 @@ export default function App() {
   const [films, setFilms] = useState({ Hi: 0, Ho: 0 });
   const [validationErrors, setValidationErrors] = useState([]);
   const [errorBanner, setErrorBanner] = useState("");
+  const [lastSaved, setLastSaved] = useState(null); // { id, url }
 
   // Begin warming backend immediately on first load
   useEffect(() => {
@@ -181,6 +190,33 @@ export default function App() {
     return () => { mounted = false; };
   }, [started]);
 
+  // Auto-load a shared design via ?design=<id>
+  useEffect(() => {
+    if (!started) return;
+    const url = new URL(window.location.href);
+    const pid = url.searchParams.get("design");
+    if (!pid) return;
+
+    (async () => {
+      try {
+        const d = await loadDesign(pid);
+        setCity(d.city);
+        setAssembly(d.assembly);
+        setLayers(
+          (d.layers || []).map((l) => ({
+            id: (crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)),
+            material: l.material,
+            thickness_mm: l.thickness_mm,
+          }))
+        );
+        setResult(d.result || null);
+        setLastSaved({ id: pid, url: window.location.href });
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, [started]);
+
   // Films depend on city & assembly
   useEffect(() => {
     if (!started) return;
@@ -218,26 +254,30 @@ export default function App() {
 
   function addLayer() {
     const id = (crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
-    setLayers(prev => [...prev, { id, material: "", thickness_mm: 10 }]);
+    setLayers((prev) => [...prev, { id, material: "", thickness_mm: 10 }]);
   }
   function removeLayer(id) {
-    setLayers(prev => prev.filter(l => l.id !== id));
+    setLayers((prev) => prev.filter((l) => l.id !== id));
   }
 
   const matsByName = useMemo(() => {
     const map = new Map();
-    materials.forEach(m => map.set(m.name, m));
+    materials.forEach((m) => map.set(m.name, m));
     return map;
   }, [materials]);
 
   const SCALE = 2;
-  const graphicLayers = useMemo(() => layers.map(l => ({
-    id: l.id,
-    width: Math.max(1, (Number(l.thickness_mm) || 0) * SCALE),
-    img: (matsByName.get(l.material)?.graphicImage || null),
-    materialName: l.material,
-    thickness: l.thickness_mm
-  })), [layers, matsByName]);
+  const graphicLayers = useMemo(
+    () =>
+      layers.map((l) => ({
+        id: l.id,
+        width: Math.max(1, (Number(l.thickness_mm) || 0) * SCALE),
+        img: matsByName.get(l.material)?.graphicImage || null,
+        materialName: l.material,
+        thickness: l.thickness_mm,
+      })),
+    [layers, matsByName]
+  );
 
   const assemblyMetrics = useMemo(() => {
     const totalThicknessMM = layers.reduce((sum, l) => sum + (Number(l.thickness_mm) || 0), 0);
@@ -245,23 +285,52 @@ export default function App() {
     return { totalThicknessMM, totalGraphicWidthPX };
   }, [layers]);
 
-  const canCalculate = useMemo(() =>
-    !!city &&
-    layers.length > 0 &&
-    layers.every(l => l.material && Number(l.thickness_mm) > 0),
-  [city, layers]);
+  const canCalculate = useMemo(
+    () =>
+      !!city &&
+      layers.length > 0 &&
+      layers.every((l) => l.material && Number(l.thickness_mm) > 0),
+    [city, layers]
+  );
 
   async function onCalculate() {
     if (!canCalculate) return;
     const payload = {
-      city, assembly,
+      city,
+      assembly,
       dynamic_coefficients: true,
-      override_Rsi: null, override_Rse: null,
-      layers: layers.map(l => ({ material: l.material, thickness_mm: Number(l.thickness_mm) || 0 })),
+      override_Rsi: null,
+      override_Rse: null,
+      layers: layers.map((l) => ({
+        material: l.material,
+        thickness_mm: Number(l.thickness_mm) || 0,
+      })),
     };
     try {
       const apiResult = await postCalculate(payload);
       setResult(apiResult);
+
+      // --- AUTO-SAVE silently after successful calculation ---
+      try {
+        const saved = await saveDesign({
+          title: null, // or build a title from inputs if you want
+          city,
+          assembly,
+          layers: payload.layers,
+          result: apiResult,
+        });
+        const link = saved.url || `${window.location.origin}?design=${saved.public_id}`;
+        setLastSaved({ id: saved.public_id, url: link });
+
+        // update the URL so refresh/share keeps the state
+        if (window?.history?.replaceState) {
+          const url = new URL(window.location.href);
+          url.searchParams.set("design", saved.public_id);
+          window.history.replaceState(null, "", url.toString());
+        }
+      } catch (e) {
+        console.warn("Auto-save failed:", e?.message || e);
+      }
     } catch (e) {
       alert(e.message);
     }
@@ -273,10 +342,11 @@ export default function App() {
 
   // Landing screen until user starts
   async function handleStart() {
-    // If not warm yet, wait a bit so transition feels smooth
     if (!warmReady) {
       setWarmMsg("Almost there…");
-      try { await waitForHealth({ maxWaitMs: 20000, pollMs: 2000 }); } catch (_) {}
+      try {
+        await waitForHealth({ maxWaitMs: 20000, pollMs: 2000 });
+      } catch (_) {}
     }
     setStarted(true);
   }
@@ -312,23 +382,40 @@ export default function App() {
           <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-gray-100 rounded-lg mb-4">
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium">City</label>
-              <select className="border rounded px-2 py-1" value={city} onChange={(e)=>setCity(e.target.value)}>
+              <select
+                className="border rounded px-2 py-1"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+              >
                 <option value="">-- Select City --</option>
-                {cities.map(c => <option key={c} value={c}>{c}</option>)}
+                {cities.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-sm font-medium">Assembly Type:</span>
-              {["wall", "roof_up"].map(a => (
+              {["wall", "roof_up"].map((a) => (
                 <label key={a} className="flex items-center gap-1 text-sm capitalize">
-                  <input type="radio" name="asm" value={a} checked={assembly===a} onChange={()=>setAssembly(a)} />
+                  <input
+                    type="radio"
+                    name="asm"
+                    value={a}
+                    checked={assembly === a}
+                    onChange={() => setAssembly(a)}
+                  />
                   {a.replace("_up", "")}
                 </label>
               ))}
             </div>
 
-            <button className="px-4 py-1 bg-white border rounded shadow-sm hover:bg-gray-50" onClick={addLayer}>
+            <button
+              className="px-4 py-1 bg-white border rounded shadow-sm hover:bg-gray-50"
+              onClick={addLayer}
+            >
               Add Layer
             </button>
           </div>
@@ -341,10 +428,12 @@ export default function App() {
                 key={l.id}
                 layer={l}
                 materials={materials}
-                isFirst={i===0}
-                isLast={i===layers.length-1}
-                onChange={(next)=> setLayers(prev => prev.map(x => x.id===l.id ? next : x))}
-                onRemove={()=> removeLayer(l.id)}
+                isFirst={i === 0}
+                isLast={i === layers.length - 1}
+                onChange={(next) =>
+                  setLayers((prev) => prev.map((x) => (x.id === l.id ? next : x)))
+                }
+                onRemove={() => removeLayer(l.id)}
               />
             ))}
           </div>
@@ -362,7 +451,9 @@ export default function App() {
 
           <div className="flex gap-4 mb-4">
             <button
-              className={`px-4 py-2 rounded ${canCalculate ? "bg-blue-600 text-white" : "bg-gray-300 text-gray-600 cursor-not-allowed"}`}
+              className={`px-4 py-2 rounded ${
+                canCalculate ? "bg-blue-600 text-white" : "bg-gray-300 text-gray-600 cursor-not-allowed"
+              }`}
               onClick={onCalculate}
               disabled={!canCalculate}
             >
@@ -372,10 +463,21 @@ export default function App() {
             <button
               onClick={handleSave}
               disabled={!result}
-              className={`px-4 py-2 rounded ${!result ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-green-600 text-white"}`}
+              className={`px-4 py-2 rounded ${
+                !result ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-green-600 text-white"
+              }`}
             >
               Save as PDF
             </button>
+
+            {lastSaved && (
+              <span className="text-sm text-gray-600 self-center">
+                Auto-saved •{" "}
+                <a className="underline" href={lastSaved.url} target="_blank" rel="noreferrer">
+                  share link
+                </a>
+              </span>
+            )}
           </div>
 
           {/* Print header (visible only in PDF) */}

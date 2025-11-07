@@ -2,7 +2,7 @@
 
 // Example: VITE_API_BASE = https://uvalue-api.onrender.com/api
 export const API_BASE = (import.meta.env.VITE_API_BASE || "/api").replace(/\/$/, "");
-// Strip trailing "/api" → backend origin for static files
+// Strip trailing "/api" → backend origin for static files (to serve /static/* images)
 export const BACKEND_BASE = API_BASE.replace(/\/api$/, "");
 
 // ------------------ small utils ------------------
@@ -17,13 +17,11 @@ async function fetchWithTimeout(url, opts = {}, timeoutMs = 20000) {
     const res = await fetch(url, {
       cache: "no-store",
       credentials: "same-origin",
-      // CORS mode is fine; your backend sets CORS on /api/*
       mode: "cors",
       ...opts,
       signal: ctrl.signal,
       headers: {
         ...(opts.headers || {}),
-        // prevent intermediate caches in some environments
         "Pragma": "no-cache",
         "Cache-Control": "no-cache",
       },
@@ -39,7 +37,6 @@ async function handle(res) {
     const text = await res.text().catch(() => "");
     throw new Error(`${res.status} ${res.statusText}${text ? ` - ${text}` : ""}`);
   }
-  // a few endpoints (like /health) may return non-JSON; guard it
   const ct = res.headers.get("content-type") || "";
   if (!ct.includes("json")) return {};
   return res.json();
@@ -56,16 +53,13 @@ async function getJSONWithRetry(
   for (let i = 0; i < tries; i++) {
     try {
       const res = await fetchWithTimeout(url, {}, timeoutMs);
-      // Retry on transient gateway errors
       if ([502, 503, 504].includes(res.status)) {
         throw new Error(`Transient status ${res.status}`);
       }
       return await handle(res);
     } catch (e) {
       lastErr = e;
-      if (i < tries - 1) {
-        await sleep(backoffMs * Math.pow(1.3, i));
-      }
+      if (i < tries - 1) await sleep(backoffMs * Math.pow(1.3, i));
     }
   }
   throw lastErr;
@@ -77,20 +71,17 @@ async function getJSONWithRetry(
  */
 export async function waitForHealth({ maxWaitMs = 90000, pollMs = 3000 } = {}) {
   const start = Date.now();
-
-  // helper that tries a single probe URL
   const probe = async (url) => {
     try {
       const res = await fetchWithTimeout(url, {}, Math.max(1000, pollMs - 250));
       if (res.ok) return true;
     } catch {
-      // ignore; we’ll retry
+      /* ignore */
     }
     return false;
   };
 
   while (Date.now() - start < maxWaitMs) {
-    // Prefer /health if you implemented it; otherwise /cities also wakes the service.
     if (await probe(`${API_BASE}/health`)) return true;
     if (await probe(`${API_BASE}/cities`)) return true;
     await sleep(pollMs);
@@ -135,6 +126,25 @@ export async function postCalculate(payload) {
     }
   }
   throw lastErr;
+}
+
+// ------------------ save/load designs ------------------
+export async function saveDesign(payload) {
+  const res = await fetch(`${API_BASE}/save-design`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to save"));
+  return res.json(); // { public_id, url }
+}
+
+export async function loadDesign(publicId) {
+  const res = await fetch(`${API_BASE}/design/${encodeURIComponent(publicId)}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Design not found");
+  return res.json(); // { title, city, assembly, layers, result, created_at }
 }
 
 // ------------------ image URL helpers (served by backend) ------------------
