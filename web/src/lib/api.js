@@ -22,7 +22,7 @@ async function fetchWithTimeout(url, opts = {}, timeoutMs = 20000) {
       signal: ctrl.signal,
       headers: {
         ...(opts.headers || {}),
-        "Pragma": "no-cache",
+        Pragma: "no-cache",
         "Cache-Control": "no-cache",
       },
     });
@@ -42,9 +42,7 @@ async function handle(res) {
   return res.json();
 }
 
-/**
- * GET with retry/backoff — helps during Render cold starts (502/503/504 or network errors).
- */
+/** GET with retry/backoff — helps during Render cold starts (502/503/504 or network errors). */
 async function getJSONWithRetry(
   url,
   { tries = 6, backoffMs = 1500, timeoutMs = 20000 } = {}
@@ -66,18 +64,14 @@ async function getJSONWithRetry(
 }
 
 // ------------------ health / warmup ------------------
-/**
- * Poll an endpoint until backend is ready. Tries /health, then falls back to /cities.
- */
+/** Poll an endpoint until backend is ready. Tries /health, then falls back to /cities. */
 export async function waitForHealth({ maxWaitMs = 90000, pollMs = 3000 } = {}) {
   const start = Date.now();
   const probe = async (url) => {
     try {
       const res = await fetchWithTimeout(url, {}, Math.max(1000, pollMs - 250));
       if (res.ok) return true;
-    } catch {
-      /* ignore */
-    }
+    } catch {}
     return false;
   };
 
@@ -149,17 +143,10 @@ export async function loadDesign(publicId) {
 
 // ------------------ image URL helpers (served by backend) ------------------
 export function descriptionImageUrl(filename) {
-  return `${BACKEND_BASE}/static/materials/description/${filename}`;
-}
-
-export function graphicImageUrl(filename) {
-  return `${BACKEND_BASE}/static/materials/graphic/${filename}`;
-}
-
-export function descriptionImageUrl(filename) {
   if (!filename) return "";
   return `${BACKEND_BASE}/static/materials/description/${encodeURIComponent(filename)}?v=1`;
 }
+
 export function graphicImageUrl(filename) {
   if (!filename) return "";
   return `${BACKEND_BASE}/static/materials/graphic/${encodeURIComponent(filename)}?v=1`;

@@ -1,21 +1,27 @@
 # backend/app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
+
 from .routes import router
 from .db import get_conn
 
 app = FastAPI()
 
-# CORS (adjust your frontend origin if you want to restrict it)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # or ["https://uvalue-calculator-render.onrender.com"]
+    allow_origins=["*"],  # lock this down later
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Auto-create table/indexes so you don't need the psql shell
+# ---- serve static images ----
+ROOT = Path(__file__).resolve().parents[1]          # backend/
+STATIC_DIR = ROOT / "static"                        # backend/static
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
 @app.on_event("startup")
 def ensure_schema():
     with get_conn() as conn, conn.cursor() as cur:
@@ -35,4 +41,3 @@ def ensure_schema():
         cur.execute("CREATE INDEX IF NOT EXISTS designs_public_id_idx ON designs(public_id);")
 
 app.include_router(router, prefix="/api")
-
