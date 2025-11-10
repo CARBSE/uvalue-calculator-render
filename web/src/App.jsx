@@ -20,97 +20,106 @@ import {
 const INITIAL_ASSEMBLY = "wall";
 
 // ---------- Landing / Intro (inline component) ----------
+// paste this in web/src/App.jsx, replacing the existing LandingIntro function
 function LandingIntro({ warming, warmMsg, onStart, demo }) {
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-5xl mx-auto p-6">
-        <h1 className="text-2xl md:text-3xl font-semibold">U-Value Calculator</h1>
-        <p className="text-gray-600 mt-1">
-          Estimate U-values and layerwise properties for walls and roofs. The live calculator loads after you click Start.
-        </p>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto p-6">
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-semibold text-gray-800">U-Value Calculator</h1>
+              <p className="text-sm text-gray-600 mt-1 max-w-2xl">
+                Estimate U-values and layerwise properties for walls and roofs. The live calculator loads after you click Start.
+              </p>
+            </div>
 
-        {/* How-to steps */}
-        <div className="grid md:grid-cols-3 gap-4 mt-6">
-          <div className="p-4 rounded-2xl border bg-gray-50">
-            <div className="text-sm font-semibold">1) Choose City & Assembly</div>
-            <div className="text-xs text-gray-600 mt-1">
-              Pick your city (Rsi/Rse) and the assembly (wall/roof).
+            <div className="hidden md:flex items-center">
+              <button
+                onClick={onStart}
+                className={`px-5 py-2 rounded-xl text-sm font-medium shadow-sm ${
+                  warming ? "bg-blue-500 text-white opacity-90" : "bg-blue-600 text-white"
+                }`}
+              >
+                {warming ? "Starting…" : "Start"}
+              </button>
             </div>
           </div>
-          <div className="p-4 rounded-2xl border bg-gray-50">
-            <div className="text-sm font-semibold">2) Add Layers</div>
-            <div className="text-xs text-gray-600 mt-1">
-              Select materials and set thickness. Drag to reorder if needed.
-            </div>
-          </div>
-          <div className="p-4 rounded-2xl border bg-gray-50">
-            <div className="text-sm font-semibold">3) Calculate</div>
-            <div className="text-xs text-gray-600 mt-1">
-              We compute Rs, U (s-s & overall), and heat capacity on the server.
-            </div>
-          </div>
-        </div>
 
-        {/* Demo preview */}
-        <div className="mt-8 p-4 rounded-2xl border">
-          <div className="flex items-center justify-between">
-            <div className="font-medium">Sample result (demo)</div>
-            <span className="text-xs text-gray-500">Values are illustrative</span>
+          {/* How-to cards (same style as tool) */}
+          <div className="grid md:grid-cols-3 gap-4 mt-6">
+            {[
+              { title: "1) Choose City & Assembly", desc: "Pick your city (Rsi/Rse) and the assembly (wall/roof)." },
+              { title: "2) Add Layers", desc: "Select materials and set thickness. Drag to reorder if needed." },
+              { title: "3) Calculate", desc: "We compute Rs, U (s-s & overall), and heat capacity on the server." },
+            ].map((c, i) => (
+              <div key={i} className="p-4 rounded-lg border bg-gray-50">
+                <div className="text-sm font-semibold text-gray-800">{c.title}</div>
+                <div className="text-xs text-gray-600 mt-1">{c.desc}</div>
+              </div>
+            ))}
           </div>
-          <div className="mt-3 grid md:grid-cols-3 gap-3 text-sm">
-            <div className="p-3 rounded bg-gray-50 border">
-              <div className="text-gray-500 text-xs">City / Assembly</div>
-              <div className="font-medium">{demo.city} / {demo.assembly}</div>
+
+          {/* demo panel — uses the same border/white-card style as the tool UI */}
+          <div className="mt-6 bg-white border rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="font-medium text-gray-800">Sample result (demo)</div>
+              <span className="text-xs text-gray-500">Values are illustrative</span>
             </div>
-            <div className="p-3 rounded bg-gray-50 border">
-              <div className="text-gray-500 text-xs">U (surface-to-surface)</div>
-              <div className="font-medium">{demo.Uss} W/m²·K</div>
+
+            <div className="mt-3 grid md:grid-cols-3 gap-3 text-sm">
+              <div className="p-3 rounded border bg-gray-50">
+                <div className="text-gray-500 text-xs">City / Assembly</div>
+                <div className="font-medium">{demo.city} / {demo.assembly}</div>
+              </div>
+              <div className="p-3 rounded border bg-gray-50">
+                <div className="text-gray-500 text-xs">U (surface-to-surface)</div>
+                <div className="font-medium">{demo.Uss} W/m²·K</div>
+              </div>
+              <div className="p-3 rounded border bg-gray-50">
+                <div className="text-gray-500 text-xs">U (overall)</div>
+                <div className="font-medium">{demo.Ua} W/m²·K</div>
+              </div>
             </div>
-            <div className="p-3 rounded bg-gray-50 border">
-              <div className="text-gray-500 text-xs">U (overall)</div>
-              <div className="font-medium">{demo.Ua} W/m²·K</div>
-            </div>
-          </div>
-          <div className="mt-3 overflow-x-auto">
-            <table className="min-w-full text-xs border">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="p-2 border text-left">Layer</th>
-                  <th className="p-2 border">Thickness (mm)</th>
-                  <th className="p-2 border">R (m²·K/W)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {demo.layers.map((L, i) => (
-                  <tr key={i} className="hover:bg-gray-50">
-                    <td className="p-2 border">{L.material}</td>
-                    <td className="p-2 border text-center">{L.thickness_mm}</td>
-                    <td className="p-2 border text-center">{L.R_layer}</td>
+
+            <div className="mt-3 overflow-x-auto">
+              <table className="min-w-full text-xs border">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="p-2 border text-left">Layer</th>
+                    <th className="p-2 border text-center">Thickness (mm)</th>
+                    <th className="p-2 border text-center">R (m²·K/W)</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {demo.layers.map((L, i) => (
+                    <tr key={i} className="hover:bg-gray-50">
+                      <td className="p-2 border">{L.material}</td>
+                      <td className="p-2 border text-center">{L.thickness_mm}</td>
+                      <td className="p-2 border text-center">{L.R_layer}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
 
-        {/* Start button / warmup text */}
-        <div className="mt-8 flex items-center gap-3">
-          <button
-            onClick={onStart}
-            className="px-5 py-2 rounded-xl bg-blue-600 text-white disabled:opacity-60"
-          >
-            {warming ? "Starting…" : "Start"}
-          </button>
-          <div className="text-sm text-gray-600">
-            {warming
-              ? (warmMsg || "Waking the server… this can take ~30–60s on the free plan")
-              : "Click to proceed to the live calculator"}
+          {/* Start button for small screens */}
+          <div className="mt-6 flex items-center gap-3 md:hidden">
+            <button
+              onClick={onStart}
+              className={`px-5 py-2 rounded-xl bg-blue-600 text-white shadow-sm ${warming ? "opacity-90" : ""}`}
+            >
+              {warming ? "Starting…" : "Start"}
+            </button>
+            <div className="text-sm text-gray-600">{warming ? (warmMsg || "Waking the server…") : "Click to proceed to the live calculator"}</div>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
 
 // ---------- App ----------
 const DEMO = {
@@ -149,7 +158,6 @@ export default function App() {
   const [films, setFilms] = useState({ Hi: 0, Ho: 0 });
   const [validationErrors, setValidationErrors] = useState([]);
   const [errorBanner, setErrorBanner] = useState("");
-  const [lastSaved, setLastSaved] = useState(null); // { id, url }
 
   // Begin warming backend immediately on first load
   useEffect(() => {
