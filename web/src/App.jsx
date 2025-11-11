@@ -20,7 +20,6 @@ import {
 const INITIAL_ASSEMBLY = "wall";
 
 // ---------- Landing / Intro (inline component) ----------
-// paste this in web/src/App.jsx, replacing the existing LandingIntro function
 function LandingIntro({ warming, warmMsg, onStart, demo }) {
   return (
     <div className="min-h-screen bg-gray-50">
@@ -120,7 +119,6 @@ function LandingIntro({ warming, warmMsg, onStart, demo }) {
   );
 }
 
-
 // ---------- App ----------
 const DEMO = {
   city: "Ahmedabad",
@@ -158,6 +156,7 @@ export default function App() {
   const [films, setFilms] = useState({ Hi: 0, Ho: 0 });
   const [validationErrors, setValidationErrors] = useState([]);
   const [errorBanner, setErrorBanner] = useState("");
+  const [lastSaved, setLastSaved] = useState(null); // for auto-save info
 
   // Begin warming backend immediately on first load
   useEffect(() => {
@@ -181,6 +180,7 @@ export default function App() {
   useEffect(() => {
     if (!started) return;
     let mounted = true;
+    console.log("Loading materials & cities (started)");
 
     (async () => {
       try {
@@ -189,9 +189,11 @@ export default function App() {
         if (!mounted) return;
         setMaterials(mats || []);
         setCities(Array.isArray(citiesRes?.cities) ? citiesRes.cities : []);
+        console.log("Loaded materials", (mats || []).length, "cities", citiesRes?.cities?.length);
       } catch (e) {
+        console.error("Failed to load initial data:", e);
         if (!mounted) return;
-        setErrorBanner(e?.message || "Failed to load initial data.");
+        setErrorBanner(e?.message || "Failed to load initial data. See console.");
       }
     })();
 
@@ -207,6 +209,7 @@ export default function App() {
 
     (async () => {
       try {
+        console.log("Loading design", pid);
         const d = await loadDesign(pid);
         setCity(d.city);
         setAssembly(d.assembly);
@@ -219,8 +222,10 @@ export default function App() {
         );
         setResult(d.result || null);
         setLastSaved({ id: pid, url: window.location.href });
+        console.log("Loaded design", pid);
       } catch (e) {
-        console.error(e);
+        console.error("Error loading design:", e);
+        // do not block the app; proceed with default state
       }
     })();
   }, [started]);
@@ -321,7 +326,7 @@ export default function App() {
       // --- AUTO-SAVE silently after successful calculation ---
       try {
         const saved = await saveDesign({
-          title: null, // or build a title from inputs if you want
+          title: null,
           city,
           assembly,
           layers: payload.layers,
@@ -350,13 +355,20 @@ export default function App() {
 
   // Landing screen until user starts
   async function handleStart() {
+    console.log("handleStart: clicked. warmReady=", warmReady);
+    // show tool immediately so UX is responsive
+    setStarted(true);
+
     if (!warmReady) {
       setWarmMsg("Almost there…");
       try {
         await waitForHealth({ maxWaitMs: 20000, pollMs: 2000 });
-      } catch (_) {}
+        console.log("handleStart: backend healthy after waiting");
+      } catch (err) {
+        console.warn("handleStart: waitForHealth timed out or failed:", err);
+        // continue — tool will surface errors if API calls fail
+      }
     }
-    setStarted(true);
   }
 
   if (!started) {
