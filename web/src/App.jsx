@@ -460,7 +460,7 @@ export default function App() {
 
           {!canCalculate && validationErrors.length > 0 && (
             <div className="p-3 mb-4 text-sm text-red-800 bg-red-100 rounded-lg" role="alert">
-              <span className="font-medium">Please fix the following issues:</span>
+              <span className="font-medium">To compute U-values, please do the following:</span>
               <ul className="mt-1.5 list-disc list-inside">
                 {validationErrors.map((err, i) => (
                   <li key={i}>{err}</li>
