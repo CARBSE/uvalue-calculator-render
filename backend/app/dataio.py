@@ -130,7 +130,17 @@ def load_materials() -> List[dict]:
             continue
 
         k   = _f(gv(row, ["thermal conductivity w mk","thermal conductivity","w mk","conductivity"]))
-        rho = _f(gv(row, ["density kg m3","density kg m 3","density kg m³","density"]))
+        rho = _f(gv(row, [
+    "density kg m3",
+    "density kg m 3",
+    "density kg/m3",
+    "density kg/m³",
+    "density kg m³",
+    "density (kg/m3)",
+    "density (kg/m³)",
+    "density"
+]))
+
         c_m = _f(gv(row, ["specific heat j kgk","c j kgk","specific heat capacity j kg k","c"]))
         c_v = _f(gv(row, ["specific heat mj m3k","specific heat mj m 3 k"]))
         if c_m is None and c_v is not None and rho not in (None,0):
