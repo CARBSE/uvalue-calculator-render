@@ -54,9 +54,10 @@ def compute(
     "material": L["material"],
     "thickness_mm": _to_float(L["thickness_mm"]),
     "k_W_mK": k,
-    "density_kg_m3": rho,
+    "density_kg_m3": rho,   
     "R_layer": round(R_layer, 6),
 })
+
 
 
     U_s2s = (1.0 / Rs) if Rs > 0 else 0.0
