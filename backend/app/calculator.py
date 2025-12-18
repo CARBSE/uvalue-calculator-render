@@ -54,7 +54,7 @@ def compute(
             "material": L["material"],
             "thickness_mm": _to_float(L["thickness_mm"]),
             "k_W_mK": k,
-            "rho_kg_m3": rho,
+            "density_kg_m3": rho,
             "R_layer": round(R_layer, 6),
             })
 
@@ -66,3 +66,5 @@ def compute(
     U_overall = (1.0 / Rt) if Rt > 0 else 0.0
 
     return Rsi, Rse, Rs, U_s2s, U_overall, cap_kJ, out_layers
+
+

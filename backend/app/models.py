@@ -17,6 +17,7 @@ class LayerOut(BaseModel):
     material: str
     thickness_mm: float
     k_W_mK: float
+    density_kg_m3: float
     R_layer: float
 
 class SingleCalcResponse(BaseModel):
