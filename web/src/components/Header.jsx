@@ -1,0 +1,48 @@
+import React from "react";
+
+import carbseLogo from "../assets/CARBSE LOGO.png";
+import crdfLogo from "../assets/logo-crdf.png";
+import ceptLogo from "../assets/unnamed.png";
+
+const Header = () => {
+  return (
+    <header className="w-full bg-white border-b">
+      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+
+        {/* LEFT: CARBSE */}
+        <div className="flex items-center gap-3">
+          <img
+            src={carbseLogo}
+            alt="CARBSE"
+            className="h-12 w-auto"
+          />
+          <div className="hidden sm:block leading-tight">
+            <div className="text-sm font-semibold text-gray-700">
+              Center for Advanced Research in
+            </div>
+            <div className="text-sm font-semibold text-gray-700">
+              Building Science and Energy
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT: Partner Logos */}
+        <div className="flex items-center gap-6">
+          <img
+            src={crdfLogo}
+            alt="CRDF"
+            className="h-10 w-auto"
+          />
+          <img
+            src={ceptLogo}
+            alt="CEPT University"
+            className="h-10 w-auto"
+          />
+        </div>
+
+      </div>
+    </header>
+  );
+};
+
+export default Header;
