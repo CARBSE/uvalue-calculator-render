@@ -33,7 +33,7 @@ const ResultsTable = ({ layers, matsByName }) => {
           <tbody>
             {layers.map((layer, idx) => {
               const m = matsByName.get(layer.material);
-              const density = layer.density_kg_m3;
+              const density = layer.rho_kg_m3;
               const imgSrc = resolveDescriptionSrc(m);
 
               return (
