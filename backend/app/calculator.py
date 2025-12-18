@@ -51,12 +51,13 @@ def compute(
         cap_kJ += rho * t_m * c / 1000.0  # kJ/m²·K
 
         out_layers.append({
-    "material": L["material"],
-    "thickness_mm": _to_float(L["thickness_mm"]),
-    "k_W_mK": k,
-    "density_kg_m3": rho,   
-    "R_layer": round(R_layer, 6),
-})
+            "material": L["material"],
+            "thickness_mm": _to_float(L["thickness_mm"]),
+            "k_W_mK": k,
+            "rho_kg_m3": rho,
+            "R_layer": round(R_layer, 6),
+            })
+
 
 
 
