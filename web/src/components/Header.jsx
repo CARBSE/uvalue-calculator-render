@@ -1,8 +1,8 @@
 import React from "react";
 
-import carbseLogo from "../assets/CARBSE LOGO.png";
-import crdfLogo from "../assets/logo-crdf.png";
-import ceptLogo from "../assets/unnamed.png";
+import carbseLogo from "../assets/carbse-logo.png";
+import crdfLogo from "../assets/crdf-logo.png";
+import ceptLogo from "../assets/cept-logo.png";
 
 const Header = () => {
   return (
