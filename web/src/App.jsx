@@ -137,17 +137,37 @@ export default function App() {
   }, [materials]);
 
   async function onCalculate() {
+  try {
+    const payload = {
+      city,
+      assembly,
+      layers: layers.map((l) => ({
+        material: l.material,
+        thickness_mm: Number(l.thickness_mm),
+      })),
+    };
+
+    const r = await postCalculate(payload);
+    setResult(r);
+
+    // ---- SILENT AUTO SAVE (no alert on failure) ----
     try {
-      const payload = {
+      const saved = await saveDesign({
+        title: null,
         city,
         assembly,
-        layers: layers.map((l) => ({
-          material: l.material,
-          thickness_mm: Number(l.thickness_mm),
-        })),
-      };
-      const r = await postCalculate(payload);
-      setResult(r);
+        layers: payload.layers,
+        result: r,
+      });
+      setLastSaved(saved);
+    } catch (e) {
+      console.warn("Auto-save failed (non-blocking):", e);
+    }
+
+  } catch (e) {
+    alert("Calculation failed. Please try again.");
+  }
+}
 
       await saveDesign({
         title: null,
@@ -165,7 +185,7 @@ export default function App() {
   /* UI                                                                 */
   /* ------------------------------------------------------------------ */
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 text-base">
       {/* 🔷 Global Header */}
       <Header />
 
@@ -284,7 +304,7 @@ export default function App() {
                 <div className="flex gap-3">
                   <button
                     onClick={onCalculate}
-                    className="px-4 py-2 bg-blue-600 text-white rounded"
+                    className="px-5 py-2 text-base bg-blue-600 text-white rounded-md"
                   >
                     Calculate
                   </button>

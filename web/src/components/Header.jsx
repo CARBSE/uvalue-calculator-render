@@ -17,14 +17,6 @@ const Header = () => {
             alt="CARBSE"
             className="h-12 w-auto"
           />
-          <div className="hidden sm:block leading-tight">
-            <div className="text-sm font-semibold text-gray-700">
-              Center for Advanced Research in
-            </div>
-            <div className="text-sm font-semibold text-gray-700">
-              Building Science and Energy
-            </div>
-          </div>
         </div>
 
         {/* RIGHT: Partner Logos */}
