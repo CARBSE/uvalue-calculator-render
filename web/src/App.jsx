@@ -150,25 +150,8 @@ export default function App() {
     const r = await postCalculate(payload);
     setResult(r);
 
-    // ---- SILENT AUTO SAVE (no alert on failure) ----
+    // ---- SILENT AUTO SAVE (non-blocking) ----
     try {
-      const saved = await saveDesign({
-        title: null,
-        city,
-        assembly,
-        layers: payload.layers,
-        result: r,
-      });
-      setLastSaved(saved);
-    } catch (e) {
-      console.warn("Auto-save failed (non-blocking):", e);
-    }
-
-  } catch (e) {
-    alert("Calculation failed. Please try again.");
-  }
-}
-
       await saveDesign({
         title: null,
         city,
@@ -177,9 +160,14 @@ export default function App() {
         result: r,
       });
     } catch (e) {
-      alert(e.message);
+      console.warn("Auto-save failed (ignored):", e);
     }
+
+  } catch (e) {
+    alert("Calculation failed. Please try again.");
   }
+}
+
 
   /* ------------------------------------------------------------------ */
   /* UI                                                                 */
