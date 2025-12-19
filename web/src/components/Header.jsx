@@ -1,3 +1,4 @@
+// web/src/components/Header.jsx
 import React from "react";
 
 import carbseLogo from "../assets/carbse-logo.png";
@@ -28,16 +29,8 @@ const Header = () => {
 
         {/* RIGHT: Partner Logos */}
         <div className="flex items-center gap-6">
-          <img
-            src={crdfLogo}
-            alt="CRDF"
-            className="h-10 w-auto"
-          />
-          <img
-            src={ceptLogo}
-            alt="CEPT University"
-            className="h-10 w-auto"
-          />
+          <img src={crdfLogo} alt="CRDF" className="h-10 w-auto" />
+          <img src={ceptLogo} alt="CEPT University" className="h-10 w-auto" />
         </div>
 
       </div>
